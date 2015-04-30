@@ -30,7 +30,7 @@ class Main {
       def options = cli.parse(args)
       
       //println options // groovy.util.OptionAccessor@10f3a9c
-      println options.getOptions() // [[ option: c concurrency  [ARG] :: number of processes sending messages ], [ option: n messages  [ARG] :: number of messages to be send by each process ], [ option: i ip  [ARG] :: server IP address ], [ option: p port  [ARG] :: server port number ]]
+      //println options.getOptions() // [[ option: c concurrency  [ARG] :: number of processes sending messages ], [ option: n messages  [ARG] :: number of messages to be send by each process ], [ option: i ip  [ARG] :: server IP address ], [ option: p port  [ARG] :: server port number ]]
       
 
       // empty
@@ -49,25 +49,47 @@ class Main {
       
       def concurrency = Integer.parseInt(options.c)
       def messages = Integer.parseInt(options.n)
+      def ip = options.i
       def port = Integer.parseInt(options.p)
       def clients = [:]
+      def threads = []
+      
+      // Se lo paso a cada plan para que me diga cuanto demoro en recibir todos los mensajes
+      //def bench = new Benchmark()
       
       concurrency.times { thread ->
          
-         Thread.start { // runnable closure
+         threads << Thread.start { // runnable closure
             
-            clients[thread] = new MLLPClient(port, options.i)
+            // This is passed so we get notified of the execution time
+            clients[thread] = new SendingPlan(messages, ip, port, this)
             
             messages.times {
             
-               clients[thread].sendToServer("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
+               clients[thread].send("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
             }
-            
-            //clients[thread].stop()
          }
       }
       
+      
+      println threads
+      
       // TODO: join threads
+      threads.each { thread ->
+         
+         thread.join()
+         //println "thread "+ thread.getId() + " joined"
+      }
+      
+      // Report
+      //println "======================================="
+      //println "totaltime: "+ totaltime +" ms"
    }
-
+   
+   // The plan will use .delegate to reference the Main class instance where the plan was called
+   static public void notifyPlanExecutionTime(SendingPlan plan, long time)
+   {
+      println "notifyPlanExecutionTime " + time + " ms"
+   }
+   
 }

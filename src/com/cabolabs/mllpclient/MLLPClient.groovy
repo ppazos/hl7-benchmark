@@ -1,5 +1,6 @@
 package com.cabolabs.mllpclient
 
+import com.cabolabs.hl7benchmark.SendingPlan
 import java.nio.charset.StandardCharsets
 
 class MLLPClient {
@@ -9,8 +10,11 @@ class MLLPClient {
    def output
    def connected = false
    def serverListener
+   
+   SendingPlan plan
+   def rcvMessageCount = 0 // Cuenta mensajes recibidos
 
-   def MLLPClient(int serverPort, String serverIP)
+   def MLLPClient(String serverIP, int serverPort, SendingPlan plan)
    {
       try
       {
@@ -20,6 +24,8 @@ class MLLPClient {
          println "MLLPClient: conectado a " + socket.getRemoteSocketAddress()
          this.input = new BufferedReader(new InputStreamReader(this.socket.getInputStream(), StandardCharsets.UTF_8))
          this.output = new BufferedWriter(new OutputStreamWriter(this.socket.getOutputStream(), StandardCharsets.UTF_8))
+         
+         this.plan = plan
          
          this.receiveThread()
       }
@@ -36,39 +42,52 @@ class MLLPClient {
 
          public void run () {
          
-            println "hilo run: " + Thread.currentThread().getId()
+            println "thread recv: " + Thread.currentThread().getId()
          
             // RECEIVE
-            def hasData = true
+            //def hasData = true
             def data
-            def responses = ''
-            while (hasData)
-            { // loop hasta que el server cierre la conexion
-               try
+            def buffer = ''
+            //while (hasData)
+            //{ // loop hasta que el server cierre la conexion
+               
+               // Reads chars
+               int i
+               char c
+               boolean mightBeMessageEnd = false
+               while ( (i = input.read()) != -1 )
                {
-                  data = input.readLine()
+                  c = (char)i
                   
-                  if (!data)
+                  if (c == '\u000b') // Message atart
                   {
-                     hasData = false
+                     // Skip start character
+                  }
+                  else if (c == '\u001c') // Might be a message end
+                  {
+                     mightBeMessageEnd = true
+                  }
+                  else if (c == "\r" && mightBeMessageEnd) // Message end
+                  {
+                     mightBeMessageEnd = false // Reset for the next message
+                     rcvMessageCount ++
+                     
+                     // Print when message is received
+                     //println "MLLPClient recibio #"+ rcvMessageCount +" thread "+ Thread.currentThread().getId()
+                     //println buffer
+                     
+                     buffer = '' // Reset receive buffer
+                     
+                     plan.messageReceived(buffer)
                   }
                   else
                   {
-                     responses += data + "\n"
+                     buffer += c // Buffers just the message characters, and avoids MLLP delimiters
                   }
                }
-               catch (Exception e)
-               {
-                  println "e3 "+ e.message
-                  hasData = false
-               }
                
-               println "MLLPClient recibio: "
-               println responses
                
-            } // while
-            
-            
+            //} // while
          }
       }
 
@@ -79,9 +98,13 @@ class MLLPClient {
    }
    
    
+   /**
+    * Sends a message to the server. This can be called several times by the same thread (it is not thread safe!)
+    * @param msg
+    */
    public void sendToServer( String msg )
    {
-      println "sendToServer " + this.connected
+      //println "sendToServer " + this.connected
       
       if (!this.connected) throw new Exception("not connected")
       
@@ -107,25 +130,3 @@ class MLLPClient {
       this.serverListener.stop()
    }
 }
-
-// MAIN
-/*
-println "hilo: " + Thread.currentThread().getId()
-
-int serverPort = 2617
-String serverIP = 'localhost'
-def client = new MLLPClient(serverPort, serverIP)
-
-Runtime.runtime.addShutdownHook {
-   client.stop()
-}
-
-try
-{
-   client.sendToServer("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
-}
-catch (Exception e)
-{
-   println "e2 " +  e.message
-}
-*/
