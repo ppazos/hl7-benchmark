@@ -4,6 +4,7 @@
 package com.cabolabs.hl7benchmark
 
 import com.cabolabs.mllpclient.MLLPClient
+import com.cabolabs.soapclient.SOAPClient
 import java.text.*
 
 /**
@@ -16,11 +17,12 @@ class Main {
       
       // http://mrhaki.blogspot.com/2009/09/groovy-goodness-parsing-commandline.html
       // http://docs.groovy-lang.org/latest/html/gapi/groovy/util/CliBuilder.html
-      def cli = new CliBuilder(usage: 'hl7-benchmark -[c] concurrency -[n] messages -[i] ip -[p] port')
+      def cli = new CliBuilder(usage: 'hl7-benchmark -[t] type -[c] concurrency -[n] messages -[i] ip -[p] port')
       // Create the list of options.
       // arges dice cuantos valores se esperan
       cli.with {
           h longOpt: 'help',        'Show usage information'
+          t longOpt: 'type',        args: 1, argName: 'type',        'mllp|soap'
           c longOpt: 'concurrency', args: 1, argName: 'concurrency', 'number of processes sending messages'
           n longOpt: 'messages',    args: 1, argName: 'messages',    'number of messages to be send by each process'
           i longOpt: 'ip',          args: 1, argName: 'ip',          'server IP address'
@@ -32,58 +34,73 @@ class Main {
       //println options // groovy.util.OptionAccessor@10f3a9c
       //println options.getOptions() // [[ option: c concurrency  [ARG] :: number of processes sending messages ], [ option: n messages  [ARG] :: number of messages to be send by each process ], [ option: i ip  [ARG] :: server IP address ], [ option: p port  [ARG] :: server port number ]]
       
-
-      // empty
-      // mandatory args not present
-      // -h or --help option is used.
-      if (!options || !options.c || !options.n || !options.i || !options.p || options.h) {
+      
+      if (!options) {
          cli.usage()
          return
       }
       
-      println options.i
-      println options.p
-      println options.c
-      println options.n
       
-      
-      def concurrency = Integer.parseInt(options.c)
-      def messages = Integer.parseInt(options.n)
-      def ip = options.i
-      def port = Integer.parseInt(options.p)
-      def clients = [:]
-      def threads = []
-      
-      // Se lo paso a cada plan para que me diga cuanto demoro en recibir todos los mensajes
-      //def bench = new Benchmark()
-      
-      concurrency.times { thread ->
+      if (options.t == 'mllp')
+      {
+         // empty
+         // mandatory args not present
+         // -h or --help option is used.
+         if (!options.c || !options.n || !options.i || !options.p || options.h) {
+            cli.usage()
+            return
+         }
          
-         threads << Thread.start { // runnable closure
+         println options.i
+         println options.p
+         println options.c
+         println options.n
+         
+         
+         def concurrency = Integer.parseInt(options.c)
+         def messages = Integer.parseInt(options.n)
+         def ip = options.i
+         def port = Integer.parseInt(options.p)
+         def clients = [:]
+         def threads = []
+         
+         // Se lo paso a cada plan para que me diga cuanto demoro en recibir todos los mensajes
+         //def bench = new Benchmark()
+         
+         concurrency.times { thread ->
             
-            // This is passed so we get notified of the execution time
-            clients[thread] = new SendingPlan(messages, ip, port, this)
-            
-            messages.times {
-            
-               clients[thread].send("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
+            threads << Thread.start { // runnable closure
+               
+               // This is passed so we get notified of the execution time
+               clients[thread] = new SendingPlan(messages, ip, port, this)
+               
+               messages.times {
+               
+                  clients[thread].send("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
+               }
             }
          }
-      }
-      
-      
-      println threads
-      
-      // TODO: join threads
-      threads.each { thread ->
          
-         thread.join()
-         //println "thread "+ thread.getId() + " joined"
+         
+         println threads
+         
+         // TODO: join threads
+         threads.each { thread ->
+            
+            thread.join()
+            //println "thread "+ thread.getId() + " joined"
+         }
+         
+         // Report
+         //println "======================================="
+         //println "totaltime: "+ totaltime +" ms"
+         
       }
-      
-      // Report
-      //println "======================================="
-      //println "totaltime: "+ totaltime +" ms"
+      else // soap
+      {
+         def soap = new SOAPClient()
+         soap.sendToServer("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
+      }
    }
    
    // The plan will use .delegate to reference the Main class instance where the plan was called

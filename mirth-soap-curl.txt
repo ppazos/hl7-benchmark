@@ -1,0 +1,14 @@
+curl -i -X POST \
+   -H "Content-Type:text/xml" \
+   -H "SOAP-Action:http://localhost:8086/services/Mirth/acceptMessage" \
+   -d \
+'<SOAP-ENV:Envelope
+         xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+         SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+   <SOAP-ENV:Body>
+      <m:acceptMessage xmlns:m="http://ws.connectors.connect.mirth.com/">
+        <arg0>MSH|^~\&amp;|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|&#10;EVN|A01|20031104082400.0000+0100|20031104082400&#10;PID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|&#10;</arg0>
+      </m:acceptMessage>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>' \
+ 'http://localhost:8086/services/Mirth/acceptMessage'
