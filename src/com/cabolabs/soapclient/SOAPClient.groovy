@@ -35,29 +35,33 @@ class SOAPClient {
       //def postBody = [arg0: "MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r"]
       
       // FIXME: mandarlo con request(POST) para poder mandar el header custom soapaction
-      http.post( path: '/services/Mirth/acceptMessage',
-                 body: {
-                    'SOAP-ENV:Envelope'(
-                       'xmlns:SOAP-ENV': "http://www.w3.org/2001/12/soap-envelope",
-                       'SOAP-ENV:encodingStyle': "http://www.w3.org/2003/05/soap-encoding"
-                    ) {
-                       'SOAP-ENV:Body' {
-                          'm:acceptMessage'(
-                           'xmlns:m': "http://ws.connectors.connect.mirth.com/"
-                          ) {
-                             arg0 {
-                                msg
-                             }
-                          }
-                       }
+      http.request( POST, XML ) { req ->
+         
+         uri.path = '/services/Mirth/acceptMessage'
+         body = {
+           'SOAP-ENV:Envelope'(
+              'xmlns:SOAP-ENV': "http://www.w3.org/2001/12/soap-envelope",
+              'SOAP-ENV:encodingStyle': "http://www.w3.org/2003/05/soap-encoding"
+           ) {
+              'SOAP-ENV:Body' {
+                 'm:acceptMessage'(
+                  'xmlns:m': "http://ws.connectors.connect.mirth.com/"
+                 ) {
+                    arg0 {
+                       msg
                     }
-                 },
-                 //contentType : 'application/soap+xml; action=http://localhost:8086/services/Mirth/acceptMessage',
-                 'SOAPAction': "http://localhost:8086/services/Mirth/acceptMessage",
-                 requestContentType: XML ) { resp ->
+                 }
+              }
+           }
+         }
+         //contentType : 'application/soap+xml; action=http://localhost:8086/services/Mirth/acceptMessage',
+         SOAPAction = "http://localhost:8086/services/Mirth/acceptMessage"
+         
+         response.success { resp, xml ->
       
-         println "POST Success: ${resp.statusLine}"
-         assert resp.statusLine.statusCode == 201
-      }
+            println "POST Success: ${resp.statusLine}"
+            assert resp.statusLine.statusCode == 201
+         }
+      } // request
    }
 }
