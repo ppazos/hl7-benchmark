@@ -56,11 +56,12 @@ class SOAPClient {
            }
          }
          //contentType : 'application/soap+xml; action=http://localhost:8086/services/Mirth/acceptMessage',
-         SOAPAction = "http://localhost:8086/services/Mirth/acceptMessage"
+         headers.SOAPAction = "http://localhost:8086/services/Mirth/acceptMessage"
          
          response.success { resp, xml ->
       
             println "POST Success: ${resp.statusLine}"
+            println xml.getText()
             assert resp.statusLine.statusCode == 201
          }
       } // request
