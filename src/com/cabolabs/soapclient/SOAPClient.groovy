@@ -2,6 +2,7 @@ package com.cabolabs.soapclient
 
 import groovyx.net.http.HTTPBuilder
 import static groovyx.net.http.ContentType.XML // http://grepcode.com/file_/repo1.maven.org/maven2/org.codehaus.groovy.modules.http-builder/http-builder/0.6/groovyx/net/http/ContentType.java/?v=source
+import static groovyx.net.http.Method.POST
 
 class SOAPClient {
 
