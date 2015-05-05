@@ -98,7 +98,9 @@ class Main {
       }
       else // soap
       {
-         def soap = new SOAPClient()
+         def soap = new SOAPClient('192.168.1.106', 8086)
+         
+         // &#10; es CR en XML
          soap.sendToServer("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
       }
    }
