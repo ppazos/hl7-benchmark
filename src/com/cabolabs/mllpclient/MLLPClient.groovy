@@ -31,8 +31,10 @@ class MLLPClient {
       }
       catch (Exception e)
       {
-         println "e1 " + e.message
+         //println "e1 " + e.message
+         println "Verifique que el servidor está escuchando en "+ serverIP +":"+ serverPort
          this.connected = false
+         this.stop()
       }
    }
    
@@ -59,7 +61,7 @@ class MLLPClient {
                {
                   c = (char)i
                   
-                  if (c == '\u000b') // Message atart
+                  if (c == '\u000b') // Message start
                   {
                      // Skip start character
                   }
@@ -76,9 +78,9 @@ class MLLPClient {
                      //println "MLLPClient recibio #"+ rcvMessageCount +" thread "+ Thread.currentThread().getId()
                      //println buffer
                      
-                     buffer = '' // Reset receive buffer
+                     this.plan.messageReceived(buffer)
                      
-                     plan.messageReceived(buffer)
+                     buffer = '' // Reset receive buffer
                   }
                   else
                   {

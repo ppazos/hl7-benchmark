@@ -1,6 +1,7 @@
 package com.cabolabs.hl7benchmark
 
 import com.cabolabs.mllpclient.MLLPClient
+import com.cabolabs.soapclient.SOAPClient
 
 /**
  * Prepara un plan de envio de messageCount mensajes a un servidor.
@@ -18,15 +19,32 @@ class SendingPlan {
    
    
    // To measure times
+   
+   // Totals
    def starttime
    def endtime
+   
+   def msg_times = [:] // msgid -> [starttime, endtime]
+   
    
    // TODO: add a timeout to finish the plan after that.
    
    // main will be notified of the execution time when the plan is finished
-   public SendingPlan(int messagesToSend, String ip, int port, Object main) {
+   /**
+    * 
+    * @param messagesToSend
+    * @param ip
+    * @param port
+    * @param main
+    * @param type soap/mllp
+    */
+   public SendingPlan(int messagesToSend, String ip, int port, Object main, String type) {
       this.messagesToSend = messagesToSend
-      this.client = new MLLPClient(ip, port, this)
+      
+      if (type == "mllp")
+         this.client = new MLLPClient(ip, port, this)
+      else
+         this.client = new SOAPClient(ip, port, this)
       this.main = main
    }
 
@@ -43,10 +61,16 @@ class SendingPlan {
     */
    public void send(String msg)
    {
+      if (!this.client.connected) return
+      
+      // start time for the message id
+      def msgid = msg.split("\\|")[9] // MSH-10
+      this.msg_times[msgid] = [System.currentTimeMillis()]
+      
       if (!started)
       {
-         starttime = System.currentTimeMillis()
-         started = true
+         this.starttime = System.currentTimeMillis()
+         this.started = true
       }
       
       // Avoids invoking after plan is done
@@ -65,14 +89,18 @@ class SendingPlan {
       
       //println "message received "+ this.messageRecvCount + " planned: "+ this.messagesToSend
       
+      // end time for the message id (look into MSA-2)
+      def msgid = rcvmsg.split("\\r")[1].split("\\|")[2] // First split gets the MSA segment
+      this.msg_times[msgid] << System.currentTimeMillis() // end time
+      
       // PLAN FINISHED
       if (this.messageRecvCount == this.messagesToSend)
       {
-         endtime = System.currentTimeMillis()
+         this.endtime = System.currentTimeMillis()
          
          //println "PLAN FINISHED "+ this.main
          
-         this.main.notifyPlanExecutionTime(this, endtime - starttime)
+         this.main.notifyPlanExecutionTime(this, this.endtime - this.starttime)
          
          // closess the current thread of execution
          this.client.stop()

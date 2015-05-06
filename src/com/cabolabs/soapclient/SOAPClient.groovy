@@ -1,5 +1,7 @@
 package com.cabolabs.soapclient
 
+import com.cabolabs.hl7benchmark.SendingPlan;
+
 import groovyx.net.http.HTTPBuilder
 import static groovyx.net.http.ContentType.XML // http://grepcode.com/file_/repo1.maven.org/maven2/org.codehaus.groovy.modules.http-builder/http-builder/0.6/groovyx/net/http/ContentType.java/?v=source
 import static groovyx.net.http.Method.POST
@@ -8,11 +10,13 @@ class SOAPClient {
 
    String serverIP
    int serverPort
+   SendingPlan plan
    
-   public SOAPClient(String serverIP, int serverPort)
+   public SOAPClient(String serverIP, int serverPort, SendingPlan plan)
    {
       this.serverIP = serverIP
       this.serverPort = serverPort
+      this.plan = plan
    }
    
 
@@ -37,8 +41,6 @@ class SOAPClient {
    public void sendToServer( String msg )
    {
       def http = new HTTPBuilder( 'http://'+ this.serverIP +':'+ this.serverPort +'/services/Mirth/acceptMessage' )
-      
-      //def postBody = [arg0: "MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r"]
       
       // FIXME: mandarlo con request(POST) para poder mandar el header custom soapaction
       http.request( POST, 'text/xml' ) { req -> //, XML ) { req ->
@@ -66,9 +68,11 @@ class SOAPClient {
          
          response.success = { resp, xml ->
       
-            println "POST Success: ${resp.statusLine}"
-
-            println xml.text() // el ACK del Mirth!
+            //println "POST Success: ${resp.statusLine}"
+            //println xml.text() // el ACK del Mirth!
+            
+            // Notifies the plan to quantify time
+            this.plan.messageReceived(xml.text())
             
             //assert resp.statusLine.statusCode == 201
          }

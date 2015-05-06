@@ -5,7 +5,9 @@ package com.cabolabs.hl7benchmark
 
 import com.cabolabs.mllpclient.MLLPClient
 import com.cabolabs.soapclient.SOAPClient
+
 import java.text.*
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * @author pab
@@ -67,6 +69,9 @@ class Main {
          // Se lo paso a cada plan para que me diga cuanto demoro en recibir todos los mensajes
          //def bench = new Benchmark()
          
+         
+         def msgid = new AtomicInteger(1)
+
          concurrency.times { thread ->
             
             threads << Thread.start { // runnable closure
@@ -76,7 +81,9 @@ class Main {
                
                messages.times {
                
-                  clients[thread].send("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
+                  clients[thread].send("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|${msgid}|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
+                  
+                  msgid.getAndIncrement()
                }
             }
          }
@@ -98,6 +105,7 @@ class Main {
       }
       else // soap
       {
+         // TODO MULTITHREAD
          def soap = new SOAPClient('192.168.1.106', 8086)
          
          // &#10; es CR en XML
@@ -105,10 +113,63 @@ class Main {
       }
    }
    
+   // TODO: sumarizar los resultados de todos los planes en un solo reporte (max, min, avg, % < rango)
    // The plan will use .delegate to reference the Main class instance where the plan was called
-   static public void notifyPlanExecutionTime(SendingPlan plan, long time)
+   static public void notifyPlanExecutionTime(SendingPlan plan, long totaltimeperplan)
    {
-      println "notifyPlanExecutionTime " + time + " ms"
+      println "total " + totaltimeperplan + " ms"
+      
+      Map timespermessage = plan.msg_times // [msgid -> [start, end]]
+      
+//      timespermessage.each{ msgid, time ->
+//         
+//         println msgid +": "+ (time[1] - time[0]) + " ms"
+//      }
+      
+      // --------------------------- Min / Max ---------------------------
+      //
+      // http://mrhaki.blogspot.com/2010/12/groovy-goodness-determine-min-and-max.html
+      def minse = plan.msg_times.min { it.value[1] - it.value[0] }.value // [start, end]
+      def maxse = plan.msg_times.max { it.value[1] - it.value[0] }.value // [start, end]
+      def min = (minse[1] - minse[0])
+      def max = (maxse[1] - maxse[0])
+      
+      // --------------------------- Avg ---------------------------
+      //
+      println "avg: "+ ( (max + min) / 2 ) +" ms" // Es una media en realidad, no el promedio de todos los tiempos
+      
+      // --------------------------- Reporte de % menor que rango ---------------------------
+      //
+      // Se divide el rango de tiempos de recepcion en 5 segmentos iguales para ver cuantos mensajes
+      // se recibieron en cada segmento de tiempos>
+      // min..min+rango, min+rango..min+2rango, min+2rango..min+3rango, min+3rango..min+4rango, min+4rango..max
+      
+      def rango = (max - min) / 5
+      def rangoActual = min + rango
+      def res = [:]
+      
+      while (rangoActual <= max)
+      {
+         def entries = plan.msg_times.findAll {
+            (it.value[1] - it.value[0]) < rangoActual
+         }
+         
+         // Saca entradas ya procesadas
+         plan.msg_times = plan.msg_times - entries
+         
+         // Pone el % del total de mensajes en lugar de la cantidad
+         res["<"+ rangoActual +" ms"] = ( ( entries.size() / plan.messagesToSend ) * 100 ).toString() + "%"
+
+         // Proximo rango
+         rangoActual += rango
+      }
+      
+      
+      println "min: "+ min + " ms"
+      println "max: "+ max + " ms"
+      println res
+      
+      println "----------------------"
    }
    
 }
