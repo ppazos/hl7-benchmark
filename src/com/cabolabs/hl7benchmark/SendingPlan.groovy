@@ -14,7 +14,7 @@ class SendingPlan {
    boolean started = false // true when the first message is sent
    int messagesToSend
    int messageRecvCount = 0
-   MLLPClient client
+   def client // SOAP or MLLP
    def main
    
    
@@ -89,8 +89,19 @@ class SendingPlan {
       
       //println "message received "+ this.messageRecvCount + " planned: "+ this.messagesToSend
       
+      // SOAP no recibe \r
+//recv [MSH|^~\&|ASD|FDGDG|ZIS|1|20150506134949.377||ACK|20150506134949.377|P|2.3
+//MSA|AA|1
+//]
+      //println "recv "+ rcvmsg.split("\\n")
+      
+      // Some clients send \r some \n (windows)
+      // We need to have 2 segments (MSH and MSA from the ACK)
+      def segments = rcvmsg.split("\\r")
+      if (segments.size() == 1) segments = rcvmsg.split("\\n")
+      
       // end time for the message id (look into MSA-2)
-      def msgid = rcvmsg.split("\\r")[1].split("\\|")[2] // First split gets the MSA segment
+      def msgid = segments[1].split("\\|")[2] // First split gets the MSA segment
       this.msg_times[msgid] << System.currentTimeMillis() // end time
       
       // PLAN FINISHED

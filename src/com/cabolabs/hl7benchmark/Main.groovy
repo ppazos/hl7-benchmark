@@ -37,80 +37,53 @@ class Main {
       //println options.getOptions() // [[ option: c concurrency  [ARG] :: number of processes sending messages ], [ option: n messages  [ARG] :: number of messages to be send by each process ], [ option: i ip  [ARG] :: server IP address ], [ option: p port  [ARG] :: server port number ]]
       
       
-      if (!options) {
+      // empty
+      // mandatory args not present
+      // -h or --help option is used.
+      if (!options || !options.c || !options.n || !options.i || !options.p || options.h) {
          cli.usage()
          return
       }
       
+      println options.i
+      println options.p
+      println options.c
+      println options.n
       
-      if (options.t == 'mllp')
-      {
-         // empty
-         // mandatory args not present
-         // -h or --help option is used.
-         if (!options.c || !options.n || !options.i || !options.p || options.h) {
-            cli.usage()
-            return
-         }
-         
-         println options.i
-         println options.p
-         println options.c
-         println options.n
-         
-         
-         def concurrency = Integer.parseInt(options.c)
-         def messages = Integer.parseInt(options.n)
-         def ip = options.i
-         def port = Integer.parseInt(options.p)
-         def clients = [:]
-         def threads = []
-         
-         // Se lo paso a cada plan para que me diga cuanto demoro en recibir todos los mensajes
-         //def bench = new Benchmark()
-         
-         
-         def msgid = new AtomicInteger(1)
+      def concurrency = Integer.parseInt(options.c)
+      def messages = Integer.parseInt(options.n)
+      def ip = options.i
+      def port = Integer.parseInt(options.p)
+      def clients = [:]
+      def threads = []
 
-         concurrency.times { thread ->
+      def msgid = new AtomicInteger(1)
+      
+      concurrency.times { thread ->
+         
+         threads << Thread.start { // runnable closure
             
-            threads << Thread.start { // runnable closure
+            // This is passed so we get notified of the execution time
+            clients[thread] = new SendingPlan(messages, ip, port, this, options.t)
+            
+            messages.times {
+            
+               clients[thread].send("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|${msgid}|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
                
-               // This is passed so we get notified of the execution time
-               clients[thread] = new SendingPlan(messages, ip, port, this)
-               
-               messages.times {
-               
-                  clients[thread].send("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|${msgid}|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
-                  
-                  msgid.getAndIncrement()
-               }
+               msgid.getAndIncrement()
             }
          }
-         
-         
-         println threads
-         
-         // TODO: join threads
-         threads.each { thread ->
-            
-            thread.join()
-            //println "thread "+ thread.getId() + " joined"
-         }
-         
-         // Report
-         //println "======================================="
-         //println "totaltime: "+ totaltime +" ms"
-         
       }
-      else // soap
-      {
-         // TODO MULTITHREAD
-         def soap = new SOAPClient('192.168.1.106', 8086)
+      
+      //println threads
+      
+      // TODO: join threads
+      threads.each { thread ->
          
-         // &#10; es CR en XML
-         soap.sendToServer("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|20031104082400|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
+         thread.join()
+         //println "thread "+ thread.getId() + " joined"
       }
+
    }
    
    // TODO: sumarizar los resultados de todos los planes en un solo reporte (max, min, avg, % < rango)

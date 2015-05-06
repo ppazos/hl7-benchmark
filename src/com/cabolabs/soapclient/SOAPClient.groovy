@@ -12,6 +12,8 @@ class SOAPClient {
    int serverPort
    SendingPlan plan
    
+   boolean connected = true // interface field needed by plan, it is used in mllp client
+   
    public SOAPClient(String serverIP, int serverPort, SendingPlan plan)
    {
       this.serverIP = serverIP
@@ -42,7 +44,8 @@ class SOAPClient {
    {
       def http = new HTTPBuilder( 'http://'+ this.serverIP +':'+ this.serverPort +'/services/Mirth/acceptMessage' )
       
-      // FIXME: mandarlo con request(POST) para poder mandar el header custom soapaction
+      // FIXME: Catch exception de coneccion, si falla contar la falla de envio del mensaje y no esperar respuesta.
+      // la falla se debe mostrar en el reporte.
       http.request( POST, 'text/xml' ) { req -> //, XML ) { req ->
          
          //uri.path = '/services/Mirth/acceptMessage'
@@ -77,5 +80,10 @@ class SOAPClient {
             //assert resp.statusLine.statusCode == 201
          }
       } // request
+   }
+   
+   // Interfaces method to let the plan work
+   public void stop()
+   {
    }
 }

@@ -8,7 +8,7 @@ class MLLPClient {
    def socket
    def input
    def output
-   def connected = false
+   boolean connected = false
    def serverListener
    
    SendingPlan plan
