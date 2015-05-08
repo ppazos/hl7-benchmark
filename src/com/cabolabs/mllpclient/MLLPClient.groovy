@@ -21,7 +21,7 @@ class MLLPClient {
          // Conexion con al servidor MLLP
          this.socket = new Socket(InetAddress.getByName(serverIP), serverPort)
          this.connected = true
-         println "MLLPClient: conectado a " + socket.getRemoteSocketAddress()
+         //println "MLLPClient: conectado a " + socket.getRemoteSocketAddress()
          this.input = new BufferedReader(new InputStreamReader(this.socket.getInputStream(), StandardCharsets.UTF_8))
          this.output = new BufferedWriter(new OutputStreamWriter(this.socket.getOutputStream(), StandardCharsets.UTF_8))
          
@@ -44,7 +44,7 @@ class MLLPClient {
 
          public void run () {
          
-            println "thread recv: " + Thread.currentThread().getId()
+            //println "thread recv: " + Thread.currentThread().getId()
          
             // RECEIVE
             //def hasData = true
