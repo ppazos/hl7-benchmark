@@ -102,38 +102,42 @@ class Main {
    @Synchronized
    static public void notifyPlanExecutionTime(SendingPlan plan, long totaltimeperplan)
    {
-      println "total plan " + totaltimeperplan + " ms"
-      
-      // ---------------------- Min / Max for current plan ------------------------
-      //
-      // http://mrhaki.blogspot.com/2010/12/groovy-goodness-determine-min-and-max.html
-      def minse = plan.msg_times.min { it.value[1] - it.value[0] }.value // [start, end]
-      def maxse = plan.msg_times.max { it.value[1] - it.value[0] }.value // [start, end]
-      def min = (minse[1] - minse[0])
-      def max = (maxse[1] - maxse[0])
-      
-      // ---------------------- Total min and max ----------------------
-      //
-      if (!totalMinTime || min < totalMinTime) totalMinTime = min
-      if (!totalMaxTime || max > totalMaxTime) totalMaxTime = max
-
-      // --------------------------- Avg ---------------------------
-      //
-      println "plan avg: "+ ( (max + min) / 2 ) +" ms" // Es una media en realidad, no el promedio de todos los tiempos
-      println "plan min: "+ min + " ms"
-      println "plan max: "+ max + " ms"
-      println "----------------------"
-      
-      
-      // --------------------------- Merge message times for final report ---------------------------
-      //
-      msgTimes << plan.msg_times
-      
-      
-      // --------------------------- Plan finished: final report ---------------------------
-      //
-      finished++
-      totalTime += totaltimeperplan
+      synchronized(this)
+      {
+         println "total plan " + totaltimeperplan + " ms"
+         
+         // ---------------------- Min / Max for current plan ------------------------
+         //
+         // http://mrhaki.blogspot.com/2010/12/groovy-goodness-determine-min-and-max.html
+         def minse = plan.msg_times.min { it.value[1] - it.value[0] }.value // [start, end]
+         def maxse = plan.msg_times.max { it.value[1] - it.value[0] }.value // [start, end]
+         def min = (minse[1] - minse[0])
+         def max = (maxse[1] - maxse[0])
+         
+         // ---------------------- Total min and max ----------------------
+         //
+         if (!totalMinTime || min < totalMinTime) totalMinTime = min
+         if (!totalMaxTime || max > totalMaxTime) totalMaxTime = max
+   
+         // --------------------------- Avg ---------------------------
+         //
+         println "plan avg: "+ ( (max + min) / 2 ) +" ms" // Es una media en realidad, no el promedio de todos los tiempos
+         println "plan min: "+ min + " ms"
+         println "plan max: "+ max + " ms"
+         println "Errors: "+ plan.errors.size()
+         println "----------------------"
+         
+         
+         // --------------------------- Merge message times for final report ---------------------------
+         //
+         msgTimes << plan.msg_times
+         
+         
+         // --------------------------- Plan finished: final report ---------------------------
+         //
+         finished++
+         totalTime += totaltimeperplan
+      }
       
       if (concurrency == finished)
       {
@@ -185,5 +189,4 @@ class Main {
          }
       }
    }
-   
 }

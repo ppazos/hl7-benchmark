@@ -79,6 +79,11 @@ class SOAPClient {
             
             //assert resp.statusLine.statusCode == 201
          }
+         
+         response.failure = { resp, content ->
+            
+            this.plan.errors << new Exception( resp.statusLine +" "+ content.text )
+         }
       } // request
    }
    

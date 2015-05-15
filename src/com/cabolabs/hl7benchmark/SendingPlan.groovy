@@ -27,6 +27,10 @@ class SendingPlan {
    def msg_times = [:] // msgid -> [starttime, endtime]
    
    
+   // Errors thrown by connections in the plan
+   def errors = [] // exception
+   
+   
    // TODO: add a timeout to finish the plan after that.
    
    // main will be notified of the execution time when the plan is finished

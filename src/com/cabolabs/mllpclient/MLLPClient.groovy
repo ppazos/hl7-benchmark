@@ -112,10 +112,17 @@ class MLLPClient {
       
       // SEND
       // Escribe en el socket con MLLP // http://hl7api.sourceforge.net/xref/ca/uhn/hl7v2/llp/MinLLPWriter.html (writeMessage)
-      this.output.write('\u000b')
-      this.output.write(msg)
-      this.output.write('\u001c' + "\r")
-      this.output.flush()
+      try
+      {
+         this.output.write('\u000b')
+         this.output.write(msg)
+         this.output.write('\u001c' + "\r")
+         this.output.flush()
+      }
+      catch (IOException e)
+      {
+         this.plan.errors << e
+      }
    }
    
    public void stop()
