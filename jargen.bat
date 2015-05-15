@@ -1,0 +1,1 @@
+jar -cfv hl7-benchmark.jar -C bin .
