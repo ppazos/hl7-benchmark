@@ -127,15 +127,15 @@ class MLLPClient {
    
    public void stop()
    {
-      this.input.close()
-      this.output.close()
+      this.input?.close()
+      this.output?.close()
          
       // Cierra el socket
-      if (this.socket.isConnected() && !this.socket.isClosed())
+      if (this.socket && this.socket.isConnected() && !this.socket.isClosed())
       {
          this.socket.close()
       }
       
-      this.serverListener.stop()
+      this.serverListener?.stop()
    }
 }
