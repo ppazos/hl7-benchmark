@@ -25,11 +25,16 @@ class Main {
    static int totalMaxTime // max time of all transactions
    static Map msgTimes = [:] // [msgid -> [start, end]] times for each message
    
+   static AtomicInteger msgid = new AtomicInteger(1) // to generate unique message control ids
+   
+   static String sample_message = "MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|MESSAGE_CONTROL_ID|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r"
+   
+   
    static main(args) {
       
       // http://mrhaki.blogspot.com/2009/09/groovy-goodness-parsing-commandline.html
       // http://docs.groovy-lang.org/latest/html/gapi/groovy/util/CliBuilder.html
-      def cli = new CliBuilder(usage: 'hl7-benchmark -[t] type -[c] concurrency -[n] messages -[s] ip:port')
+      def cli = new CliBuilder(usage: 'hl7-benchmark -[t] type -[c] concurrency -[n] messages -[s] ip:port [message_path] -[path]')
       // Create the list of options.
       // arges dice cuantos valores se esperan
       cli.with {
@@ -37,7 +42,8 @@ class Main {
           t longOpt: 'type',        args: 1, argName: 'type',        'mllp|soap'
           c longOpt: 'concurrency', args: 1, argName: 'concurrency', 'number of processes sending messages'
           n longOpt: 'messages',    args: 1, argName: 'messages',    'number of messages to be send by each process'
-          s longOpt: 'ip:port',     args: 1, argName: 'ip:port',     'server IP address:server port'
+          s longOpt: 'ip:port',     args: 2, argName: 'ip:port',     'server IP address:server port',                 valueSeparator: ':'
+          path longOpt: 'message path', args: 1, argName: 'message_path', 'path to sample message'
       }
       
       def options = cli.parse(args)
@@ -53,21 +59,43 @@ class Main {
          return
       }
       
-//      println options.s // ip:port
+//      println options.ss // ip:port // adding an 's' gets all the coded values separated by valueSeparator
 //      println options.c
 //      println options.n
+//      println args // [-t, mllp, -c, 10, -n, 100, -s, 192.168.1.107:2617, -path, C:\path\path\file.hl7]
+//      println options.path
+      
+      // Check input sample message
+      if (options.path)
+      {
+         def file = new File(options.path)
+         if (!file.exists())
+         {
+            println  "file "+ options.path +" doesn't exists"
+            return
+         }
+         if (!file.canRead())
+         {
+            println  "can't read file "+ options.path
+            return
+         }
+         
+         // TODO: verify the content is HL7 (we need to use HAPI parser for this)
+         sample_message = file.getText()
+      }
+      
       
       concurrency = Integer.parseInt(options.c)
       def plan_messages = Integer.parseInt(options.n)
       
       messages = concurrency * plan_messages
       
-      def ip = options.s.split(":")[0]
-      def port = Integer.parseInt(options.s.split(":")[1])
+      def ip = options.ss[0] // adding an 's' gets all the coded values separated by valueSeparator from the arg with name 's' so it is ss
+      def port = Integer.parseInt(options.ss[1])
       def clients = [:]
       def threads = []
 
-      def msgid = new AtomicInteger(1)
+      //def msgid = new AtomicInteger(1)
       
       concurrency.times { thread ->
          
@@ -78,9 +106,11 @@ class Main {
             
             plan_messages.times {
             
-               clients[thread].send("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|${msgid}|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
+               //clients[thread].send("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|${msgid}|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
                
-               msgid.getAndIncrement()
+               //msgid.getAndIncrement()
+               
+               clients[thread].send( filterMessage( sample_message ) )
             }
          }
       }
@@ -94,6 +124,26 @@ class Main {
          //println "thread "+ thread.getId() + " joined"
       }
 
+   }
+   
+   /**
+    * Changes the control id of the message to make it unique.
+    * @param message
+    * @return
+    */
+   private static String filterMessage( String message )
+   {
+      // Changes the message control id for our generated msgid 
+      
+      // Some clients send \r some \n (windows)
+      // MSH=segments[0], ...
+      def segments = message.split("\\r")
+      if (segments.size() == 1) segments = message.split("\\n")
+      def msg_msgid = segments[0].split("\\|")[9] // MSH-10
+      
+      msgid.getAndIncrement()
+      
+      return message.replace(/|${msg_msgid}|/, '|'+ msgid.toString() +'|')
    }
    
    // TODO: sumarizar los resultados de todos los planes en un solo reporte (max, min, avg, % < range)
@@ -121,10 +171,11 @@ class Main {
    
          // --------------------------- Avg ---------------------------
          //
-         println "plan avg: "+ ( (max + min) / 2 ) +" ms" // Es una media en realidad, no el promedio de todos los tiempos
+         println "plan media: "+ ( (max + min) / 2 ) +" ms" // Es una media en realidad, no el promedio de todos los tiempos
+         // TODO> AVG de todos los mensajes
          println "plan min: "+ min + " ms"
          println "plan max: "+ max + " ms"
-         println "Errors: "+ plan.errors.size()
+         println "errors: "+ plan.errors.size()
          println "----------------------"
          
          
@@ -151,7 +202,7 @@ class Main {
          // se recibieron en cada segmento de tiempos>
          // min..min+range, min+range..min+2range, min+2range..min+3range, min+3range..min+4range, min+4range..max
          
-         def range = (totalMaxTime - totalMinTime) / 5
+         def range = (totalMaxTime - totalMinTime) / 10
          def rangeActual = totalMinTime + range
          def res = [:]
          
@@ -185,7 +236,7 @@ class Main {
          // Si el porcentaje da menos que 100% puede ser que algun mensaje se halla perdido ej. error de conexion poque se satura el servers
          res.each { time, percentage ->
             
-            println "  "+ percentage +"  "+ time
+            println "\t"+ percentage +"\t"+ time
          }
       }
    }
