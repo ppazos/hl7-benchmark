@@ -34,7 +34,7 @@ class Main {
       
       // http://mrhaki.blogspot.com/2009/09/groovy-goodness-parsing-commandline.html
       // http://docs.groovy-lang.org/latest/html/gapi/groovy/util/CliBuilder.html
-      def cli = new CliBuilder(usage: 'hl7-benchmark -[t] type -[c] concurrency -[n] messages -[s] ip:port [message_path] -[path]')
+      def cli = new CliBuilder(usage: 'hl7-benchmark -[t] type -[c] concurrency -[n] messages -[d] delay -[s] ip:port [message_path] -[path]')
       // Create the list of options.
       // arges dice cuantos valores se esperan
       cli.with {
@@ -42,6 +42,7 @@ class Main {
           t longOpt: 'type',        args: 1, argName: 'type',        'mllp|soap'
           c longOpt: 'concurrency', args: 1, argName: 'concurrency', 'number of processes sending messages'
           n longOpt: 'messages',    args: 1, argName: 'messages',    'number of messages to be send by each process'
+          d longOpt: 'delay',       args: 1, argName: 'delay',       'delay between sending messages (ms)'
           s longOpt: 'ip:port',     args: 2, argName: 'ip:port',     'server IP address:server port',                 valueSeparator: ':'
           path longOpt: 'message path', args: 1, argName: 'message_path', 'path to sample message'
       }
@@ -94,8 +95,11 @@ class Main {
       def port = Integer.parseInt(options.ss[1])
       def clients = [:]
       def threads = []
-
-      //def msgid = new AtomicInteger(1)
+      
+      def delay = 0
+      if (options.d) delay = Integer.parseInt(options.d)
+      
+      // FIXME: create threads in one loop then send messages for each thread.
       
       concurrency.times { thread ->
          
@@ -108,7 +112,8 @@ class Main {
             
                //clients[thread].send("MSH|^~\\&|ZIS|1^AHospital|ASD|FDGDG|199605141144||ADT^A01|${msgid}|P|2.3|||AL|NE|\rEVN|A01|20031104082400.0000+0100|20031104082400\rPID|||10||Vries^Danny^D.e||19951202|M|||Rembrandlaan^7^Leiden^^7301TH^^^P|\r")
                
-               //msgid.getAndIncrement()
+               // Delay between sending messages
+               if (delay > 0) Thread.sleep(delay)
                
                clients[thread].send( filterMessage( sample_message ) )
             }
@@ -193,7 +198,6 @@ class Main {
       if (concurrency == finished)
       {
          println "Total: "+ totalTime + " ms"
-         
          println "Percentage of transactions completed in certain time (ms)"
          
          // --------------------------- Reporte de % menor que range ---------------------------
@@ -206,32 +210,37 @@ class Main {
          def rangeActual = totalMinTime + range
          def res = [:]
          
-         while (rangeActual <= totalMaxTime)
+         // For 1 message or the case that the max and min are equal, just show 100% on that time
+         if (range == 0)
          {
-            // Messages in current range
-            // msgTimes ==> [msgid -> [start, end]]
-            def entries = msgTimes.findAll {
-               (it.value[1] - it.value[0]) <= rangeActual
+            res["< "+ rangeActual] = "100%"
+         }
+         else
+         {
+            while (rangeActual <= totalMaxTime)
+            {
+               // Messages in current range
+               // msgTimes ==> [msgid -> [start, end]]
+               def entries = msgTimes.findAll {
+                  (it.value[1] - it.value[0]) <= rangeActual
+               }
+               
+               // Saca entradas ya procesadas
+               msgTimes = msgTimes - entries
+               
+               // Pone el % del total de mensajes en lugar de la cantidad
+               def roundedPercentage = new BigDecimal( ( entries.size() / messages ) * 100 ).setScale(1, BigDecimal.ROUND_HALF_UP)
+               res["< "+ rangeActual] = roundedPercentage.toString() +"%"
+      
+               // La suma total deberia ser self.messages
+               //println "es: "+ entries.size()
+               
+               // Proximo range
+               rangeActual += range
             }
-            
-            // Saca entradas ya procesadas
-            msgTimes = msgTimes - entries
-            
-            // Pone el % del total de mensajes en lugar de la cantidad
-            def roundedPercentage = new BigDecimal( ( entries.size() / messages ) * 100 ).setScale(1, BigDecimal.ROUND_HALF_UP)
-            res["< "+ rangeActual] = roundedPercentage.toString() +"%"
-   
-            // La suma total deberia ser self.messages
-            //println "es: "+ entries.size()
-            
-            // Proximo range
-            rangeActual += range
          }
          
-         // msgTimes deberia estar vacio al terminar
-         //println "Quedan tiempos!> "+ msgTimes.collectEntries {
-         //   [(it.key): it.value[1] - it.value[0]]
-         //}
+         //println res
          
          // Si el porcentaje da menos que 100% puede ser que algun mensaje se halla perdido ej. error de conexion poque se satura el servers
          res.each { time, percentage ->
