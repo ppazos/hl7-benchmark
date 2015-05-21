@@ -66,11 +66,7 @@ class SendingPlan {
    public void send(String msg)
    {
       if (!this.client.connected) return
-      
-      // start time for the message id
-      def msgid = msg.split("\\|")[9] // MSH-10
-      this.msg_times[msgid] = [System.currentTimeMillis()]
-      
+
       if (!started)
       {
          this.starttime = System.currentTimeMillis()
@@ -79,6 +75,10 @@ class SendingPlan {
       
       // Avoids invoking after plan is done
       if (this.messageRecvCount == this.messagesToSend) throw new Exception("Plan executed, "+ this.messageRecvCount +" messages already sent")
+      
+      // start time for the message id
+      def msgid = msg.split("\\|")[9] // MSH-10
+      this.msg_times[msgid] = [System.currentTimeMillis()]
       
       this.client.sendToServer(msg)
    }
@@ -95,10 +95,9 @@ class SendingPlan {
       //println "recv "+ rcvmsg.split("\\n")
       
       // SOAP no recibe \r
-//recv [MSH|^~\&|ASD|FDGDG|ZIS|1|20150506134949.377||ACK|20150506134949.377|P|2.3
-//MSA|AA|1
-//]
-      
+      //recv [MSH|^~\&|ASD|FDGDG|ZIS|1|20150506134949.377||ACK|20150506134949.377|P|2.3
+      //MSA|AA|1
+      //]
       
       // Some clients send \r some \n (windows)
       // We need to have 2 segments (MSH and MSA from the ACK)
