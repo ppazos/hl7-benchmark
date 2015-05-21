@@ -24,6 +24,10 @@ class MLLPClient {
          //println "MLLPClient: conectado a " + socket.getRemoteSocketAddress()
          this.input = new BufferedReader(new InputStreamReader(this.socket.getInputStream(), StandardCharsets.UTF_8))
          this.output = new BufferedWriter(new OutputStreamWriter(this.socket.getOutputStream(), StandardCharsets.UTF_8))
+         //this.input = this.socket.getInputStream()
+         //this.output = this.socket.getOutputStream()
+         
+         //println this.input.getClass() // SocketInputStream
          
          this.plan = plan
          
@@ -45,51 +49,84 @@ class MLLPClient {
          public void run () {
          
             //println "thread recv: " + Thread.currentThread().getId()
-         
+            
+            // DEBUG
+            //def start
+            //def now
+            
+            
             // RECEIVE
             //def hasData = true
             def data
             def buffer = ''
-            //while (hasData)
-            //{ // loop hasta que el server cierre la conexion
+
+            /*
+            // Reads chars
+            int i
+            char c
+            boolean mightBeMessageEnd = false
+            while ( (i = input.read()) != -1 )
+            {
+               c = (char)i
                
-               // Reads chars
-               int i
-               char c
-               boolean mightBeMessageEnd = false
-               while ( (i = input.read()) != -1 )
+               if (c == '\u000b') // Message start
                {
-                  c = (char)i
-                  
-                  if (c == '\u000b') // Message start
-                  {
-                     // Skip start character
-                  }
-                  else if (c == '\u001c') // Might be a message end
-                  {
-                     mightBeMessageEnd = true
-                  }
-                  else if (c == "\r" && mightBeMessageEnd) // Message end
-                  {
-                     mightBeMessageEnd = false // Reset for the next message
-                     rcvMessageCount ++
-                     
-                     // Print when message is received
-                     //println "MLLPClient recibio #"+ rcvMessageCount +" thread "+ Thread.currentThread().getId()
-                     //println buffer
-                     
-                     this.plan.messageReceived(buffer)
-                     
-                     buffer = '' // Reset receive buffer
-                  }
-                  else
-                  {
-                     buffer += c // Buffers just the message characters, and avoids MLLP delimiters
-                  }
+                  // Skip start character
+                  //start = System.currentTimeMillis()
                }
-               
-               
-            //} // while
+               else if (c == '\u001c') // Might be a message end
+               {
+                  mightBeMessageEnd = true
+               }
+               else if (c == "\r" && mightBeMessageEnd) // Message end
+               {
+                  mightBeMessageEnd = false // Reset for the next message
+                  rcvMessageCount ++
+                  
+                  // Print when message is received
+                  //println "MLLPClient recibio #"+ rcvMessageCount +" thread "+ Thread.currentThread().getId()
+                  //println buffer
+                  
+                  //now = System.currentTimeMillis()
+                  //println "Receive "+ (now - start) // ms
+                  
+                  
+                  this.plan.messageReceived(buffer)
+                  
+                  buffer = '' // Reset receive buffer
+               }
+               else
+               {
+                  buffer += c // Buffers just the message characters, and avoids MLLP delimiters
+               }
+            }
+            */
+            
+            def line
+            while ( ( line = input.readLine() ) )
+            {
+               // if its end of message (the last CR was read by readLine)
+               if (line[line.size()-1] == '\u001c')
+               {
+                  rcvMessageCount ++
+                  
+                  // Print when message is received
+                  //println "MLLPClient recibio #"+ rcvMessageCount +" thread "+ Thread.currentThread().getId()
+                  //println buffer[1..-1] // removes the start message byte
+                  
+                  //now = System.currentTimeMillis()
+                  //println "Receive "+ (now - start) // ms
+                  
+                  
+                  this.plan.messageReceived(buffer[1..-1])
+                  
+                  buffer = '' // Reset receive buffer
+               }
+               else
+               {
+                  buffer += line + "\r"  // Buffers just the message characters, and avoids MLLP delimiters
+               }
+            }
          }
       }
 

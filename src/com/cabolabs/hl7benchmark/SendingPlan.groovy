@@ -92,12 +92,13 @@ class SendingPlan {
       this.messageRecvCount ++
       
       //println "message received "+ this.messageRecvCount + " planned: "+ this.messagesToSend
+      //println "recv "+ rcvmsg.split("\\n")
       
       // SOAP no recibe \r
 //recv [MSH|^~\&|ASD|FDGDG|ZIS|1|20150506134949.377||ACK|20150506134949.377|P|2.3
 //MSA|AA|1
 //]
-      //println "recv "+ rcvmsg.split("\\n")
+      
       
       // Some clients send \r some \n (windows)
       // We need to have 2 segments (MSH and MSA from the ACK)
