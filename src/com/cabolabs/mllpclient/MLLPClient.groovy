@@ -22,8 +22,10 @@ class MLLPClient {
          this.socket = new Socket(InetAddress.getByName(serverIP), serverPort)
          this.connected = true
          //println "MLLPClient: conectado a " + socket.getRemoteSocketAddress()
-         this.input = new BufferedReader(new InputStreamReader(this.socket.getInputStream(), StandardCharsets.UTF_8))
-         this.output = new BufferedWriter(new OutputStreamWriter(this.socket.getOutputStream(), StandardCharsets.UTF_8))
+         
+         // Buffer 128 KB (8KB por defecto)
+         this.input = new BufferedReader(new InputStreamReader(this.socket.getInputStream(), StandardCharsets.UTF_8), 131072)
+         this.output = new BufferedWriter(new OutputStreamWriter(this.socket.getOutputStream(), StandardCharsets.UTF_8), 131072)
          //this.input = this.socket.getInputStream()
          //this.output = this.socket.getOutputStream()
          
@@ -149,11 +151,10 @@ class MLLPClient {
       
       // SEND
       // Escribe en el socket con MLLP // http://hl7api.sourceforge.net/xref/ca/uhn/hl7v2/llp/MinLLPWriter.html (writeMessage)
+      // http://sourceforge.net/p/hl7api/code/764/tree/trunk/hapi-mvn/hapi-base/src/main/java/ca/uhn/hl7v2/llp/
       try
       {
-         this.output.write('\u000b')
-         this.output.write(msg)
-         this.output.write('\u001c' + "\r")
+         this.output.write('\u000b' + msg + '\u001c' + "\r")
          this.output.flush()
       }
       catch (IOException e)
